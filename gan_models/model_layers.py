@@ -1,3 +1,6 @@
+"""
+Useful layers and models for creating GAN models.
+"""
 from collections import namedtuple
 from typing import Tuple, Sequence
 
@@ -12,16 +15,16 @@ ConvParams = namedtuple('ConvParams', ('filters', 'kernel_sizes', 'strides'))
 
 class UniformNoiseGenerator(layers.Layer):
 
-    def __init__(self, minval: float, maxval: float, output_dim: int, **kwargs):
+    def __init__(self, output_dim: int, minval: float=-1.0, maxval: float=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
         The output is random uniform numbers of shape (batch_size, output_dim).
         The input vectors are discarded
 
         Args:
+            output_dim: Dimension of the output.
             minval: Min value of the uniform noise.
             maxval: Max value of the uniform noise.
-            output_dim: Dimension of the output.
         """
         self.minval = minval
         self.maxval = maxval
@@ -31,6 +34,30 @@ class UniformNoiseGenerator(layers.Layer):
     def call(self, inputs, **kwargs):
         batch_size = K.shape(inputs)[0]
         return K.random_uniform((batch_size, self.output_dim), minval=self.minval, maxval=self.maxval)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0], self.output_dim
+
+
+class NormalNoiseGenerator(layers.Layer):
+
+    def __init__(self, output_dim: int, stdev: float=1.0, **kwargs):
+        """Generate uniform noise for the data generator.
+
+        The output is random uniform numbers of shape (batch_size, output_dim).
+        The input vectors are discarded
+
+        Args:
+            output_dim: Dimension of the output.
+            stdev: Standard deviation of the Gaussian noise.
+        """
+        self.stdev = stdev
+        self.output_dim = output_dim
+        super().__init__(**kwargs)
+
+    def call(self, inputs, **kwargs):
+        batch_size = K.shape(inputs)[0]
+        return K.random_normal((batch_size, self.output_dim), stddev=self.stdev)
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], self.output_dim
@@ -53,7 +80,7 @@ def get_dcgan_generator(
     Returns:
         A Keras Sequential model as DCGAN generator.
     """
-    model_layers =[
+    model_layers = [
         layers.Dense(input_dim=input_dim, units=(shape_layer1[0] * shape_layer1[1] * shape_layer1[2])),
         layers.BatchNormalization(),
         layers.Activation('relu'),
@@ -70,17 +97,17 @@ def get_dcgan_generator(
             layers.BatchNormalization(),
             layers.Activation('relu'),
         ]
-    # For the output layer, don't use batch-norm, and use tanh activation according to DCGAN paper.
+    # For the output layer, don't use batch-norm, and use sigmoid activation so the output is 0-1.
     conv_params = conv_params_list[-1]
-    model_layers += [
+    model_layers.append(
         layers.Conv2DTranspose(
             filters=conv_params.filters,
             kernel_size=conv_params.kernel_sizes,
             strides=conv_params.strides,
             padding='same',
-        ),
-        layers.Activation('tanh'),
-    ]
+            activation='sigmoid',
+        )
+    )
     return Sequential(layers=model_layers, name=name)
 
 
@@ -99,7 +126,6 @@ def get_dcgan_discriminator(
     Returns:
         A Keras Sequential model as DCGAN discriminator.
     """
-    model = Sequential()
     # First layer, which does not use batch-norm
     conv_params = conv_params_list[0]
     model_layers = [
@@ -130,6 +156,3 @@ def get_dcgan_discriminator(
         layers.Dense(1),
     ]
     return Sequential(layers=model_layers, name=name)
-
-
-
