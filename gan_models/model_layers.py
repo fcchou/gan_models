@@ -2,7 +2,6 @@
 Useful layers and models for creating GAN models.
 """
 from collections import namedtuple
-from typing import Tuple, Sequence
 
 from keras.models import Sequential
 from keras.constraints import Constraint
@@ -16,16 +15,16 @@ ConvParams = namedtuple('ConvParams', ('filters', 'kernel_sizes', 'strides'))
 
 class UniformNoiseGenerator(layers.Layer):
 
-    def __init__(self, output_dim: int, minval: float=-1.0, maxval: float=1.0, **kwargs):
+    def __init__(self, output_dim, minval=-1.0, maxval=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
         The output is random uniform numbers of shape (batch_size, output_dim).
         The input vectors are discarded
 
         Args:
-            output_dim: Dimension of the output.
-            minval: Min value of the uniform noise.
-            maxval: Max value of the uniform noise.
+            output_dim (int): Dimension of the output.
+            minval (float): Min value of the uniform noise.
+            maxval (float): Max value of the uniform noise.
         """
         self.minval = minval
         self.maxval = maxval
@@ -42,15 +41,15 @@ class UniformNoiseGenerator(layers.Layer):
 
 class NormalNoiseGenerator(layers.Layer):
 
-    def __init__(self, output_dim: int, stdev: float=1.0, **kwargs):
+    def __init__(self, output_dim, stdev=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
         The output is random uniform numbers of shape (batch_size, output_dim).
         The input vectors are discarded
 
         Args:
-            output_dim: Dimension of the output.
-            stdev: Standard deviation of the Gaussian noise.
+            output_dim (int): Dimension of the output.
+            stdev (float): Standard deviation of the Gaussian noise.
         """
         self.stdev = stdev
         self.output_dim = output_dim
@@ -63,9 +62,15 @@ class NormalNoiseGenerator(layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape[0], self.output_dim
 
+
 class ClipWeight(Constraint):
 
     def __init__(self, clip_value=0.01):
+        """Clip weight constraint. The layer weights are constrained to be in [-clip_value, clip_value]
+
+        Args:
+            clip_value (float): Size of the weight clipping.
+        """
         self.clip_value = clip_value
 
     def __call__(self, w):
@@ -75,20 +80,15 @@ class ClipWeight(Constraint):
         return {'clip_value': self.clip_value}
 
 
-def get_dcgan_generator(
-    input_dim: int,
-    shape_layer1: Tuple[int, int, int],
-    conv_params_list: Sequence[ConvParams],
-    use_batch_norm: bool=True,
-    name: str='dcgan_generator',
-) -> Sequential:
+def get_dcgan_generator(input_dim, shape_layer1, conv_params_list, use_batch_norm=True, name='dcgan_generator'):
     """Create DCGAN generator.
 
     Args:
-        input_dim: Dimension of the input (random) vector for generation
-        shape_layer1: Shape of the 1st layer before Conv2DTranspose (3 dimensions).
-        conv_params_list: List of parameters for the Conv2DTranspose layers.
-        name: Name of the model.
+        input_dim (int): Dimension of the input (random) vector for generation
+        shape_layer1 (Tuple[int, int, int]): Shape of the 1st layer before Conv2DTranspose (3 dimensions).
+        conv_params_list (List[ConvParams]): List of parameters for the Conv2DTranspose layers.
+        use_batch_norm (bool): If batch normalization is used between layers.
+        name (str): Name of the model.
 
     Returns:
         A Keras Sequential model as DCGAN generator.
@@ -129,23 +129,28 @@ def get_dcgan_generator(
 
 
 def get_dcgan_discriminator(
-    input_shape: Tuple[int, int, int],
-    conv_params_list: Sequence[ConvParams],
-    use_batch_norm: bool=True,
-    clip_weight: float=None,
-    name: str='dcgan_discriminator',
-) -> Sequential:
+    input_shape,
+    conv_params_list,
+    use_batch_norm=True,
+    clip_weight=None,
+    name='dcgan_discriminator',
+):
     """DCGAN discriminator.
 
     Args:
-        input_shape: Shape of the input tensor (3 dimensions).
-        conv_params_list: List of parameters for the Conv2D layers.
-        name: Name of the model.
+        input_dim (int): Dimension of the input (random) vector for generation
+        shape_layer1 (Tuple[int, int, int]): Shape of the 1st layer before Conv2DTranspose (3 dimensions).
+        conv_params_list (List[ConvParams]): List of parameters for the Conv2D layers.
+        use_batch_norm (bool): If batch normalization is used between layers.
+        clip_weight (bool): If clip-weight constraint is applied to the weights.
+        name (str): Name of the model.
 
     Returns:
         A Keras Sequential model as DCGAN discriminator.
     """
-    assert clip_weight is None or clip_weight > 0
+    if clip_weight is not None and clip_weight <= 0:
+        raise ValueError('clip_weight must be > 0')
+
     # First layer, which does not use batch-norm
     constraint = None if clip_weight is None else ClipWeight(clip_weight)
     conv_params = conv_params_list[0]
@@ -182,4 +187,3 @@ def get_dcgan_discriminator(
         layers.Dense(1, kernel_constraint=constraint, bias_constraint=constraint),
     ]
     return Sequential(layers=model_layers, name=name)
-

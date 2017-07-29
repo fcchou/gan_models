@@ -1,15 +1,9 @@
-from typing import Callable
-
+"""
+Useful common utils for model training and visualization.
+"""
 import keras
 import numpy as np
-import tqdm
 import matplotlib.pyplot as plt
-
-try:
-    import tensorflow as tf
-    Tensor = tf.Tensor
-except ImportError:
-    Tensor = object
 
 
 def get_mnist_images():
@@ -20,56 +14,42 @@ def get_mnist_images():
     return (x_train, y_train), (x_test, y_test)
 
 
-def train_gan_standard(
-    input_data: np.ndarray,
-    train_d: Callable[[np.ndarray], float],
-    train_g: Callable[[np.ndarray], float],
-    epochs: int=10,
-    batch_size: int=64,
-):
-    """Standard GAN training protocol.
-
-    We first train on a mini-batch on the discriminator, then update the generator -> loop
+def mini_batch_generator(input_data, batch_size=64, shuffle=True):
+    """Generator for training mini-batches
 
     Args:
-        input_data: Input training data.
-        train_d: Function that train discriminator with a mini-batch, returns the loss value.
-        train_g: Function that train generator with a mini-batch, returns the loss value.
-        epochs: Training epochs.
-        batch_size: Size of the mini-batch.
-
-    Yields:
-        For each epoch, (epoch number, avg discriminator loss, avg generator loss)
+        input_data (ndarray): Input training data.
+        batch_size (int): Size of the mini batch.
+        shuffle (bool): If the data is shuffled before mini batch generation.
     """
     n_samples = input_data.shape[0]
     n_batches = n_samples // batch_size
-    for i in range(epochs):
+    if shuffle:
         shuffled_idx = np.arange(n_samples)
         np.random.shuffle(shuffled_idx)
-        shuffled_input = input_data[shuffled_idx]
-        d_loss_sum = 0
-        g_loss_sum = 0
-        for j in tqdm.trange(n_batches):
-            batch_input = shuffled_input[(j * batch_size):((j + 1) * batch_size)]
-            d_loss_sum += train_d(batch_input)
-            d_loss_sum += train_g(batch_input)
-        yield i, d_loss_sum / n_batches, g_loss_sum / n_batches
+        input_data = input_data[shuffled_idx]
+    for j in range(n_batches):
+        yield input_data[(j * batch_size):((j + 1) * batch_size)]
 
 
-def plot_output(generator, g_input_size):
-    """Generate plots from generator.
+def plot_generated_images(generator, g_input_size):
+    """Generate plots for images from generator.
 
     Args:
-        generator: GAN generator.
-        g_input_size: Size of the generator input.
+        generator (keras Model): GAN generator.
+        g_input_size (int): Size of the generator input.
     """
     noise_input = np.random.normal(size=(49, g_input_size))
 
     generated_images = generator.predict(noise_input)
+    image_shape = generated_images.shape
+    if image_shape[-1] == 1:
+        # If there is only one channel, flatten the channel dimension
+        generated_images = generated_images[:, :, :, 0]
 
     plt.figure(figsize=(10, 10))
-    for i in range(generated_images.shape[0]):
+    for i in range(image_shape[0]):
         plt.subplot(7, 7, i + 1)
-        plt.imshow(generated_images[i, :, :, 0], cmap='gray')
+        plt.imshow(generated_images[i], cmap='gray')
         plt.axis('off')
     plt.tight_layout()
