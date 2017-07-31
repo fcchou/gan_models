@@ -4,7 +4,7 @@ Model class to help training GAN.
 The main class GanTrainer hacks some keras Model class internals to perform faster training and to reuse the
 mini-batching and progress bar of model.fit function.
 
-See Also
+See Also gan_trainer_simple.py for a training pipeline that has less hacks of keras internals.
 """
 import contextlib
 
@@ -53,12 +53,12 @@ class GanTrainer(Model):
         self.g_input = model_layers.NormalNoiseGenerator(g_input_dim)(self.d_input)
 
         self.g_output = generator(self.g_input)
-        self.d_output_on_input = discriminator(self.d_input)
-        self.d_output_on_generated = discriminator(self.g_output)
+        self.d_output_on_real = discriminator(self.d_input)
+        self.d_output_on_fake = discriminator(self.g_output)
 
         super().__init__(
             inputs=self.d_input,
-            outputs=[self.d_output_on_generated, self.d_output_on_input],
+            outputs=[self.d_output_on_fake, self.d_output_on_real],
             name=name,
         )
 
@@ -70,7 +70,7 @@ class GanTrainer(Model):
         is_wgan=False,
         wgan_gradient_lambda=0.0,
         **kwargs
-    ) -> None:
+    ):
         """Compile the GAN model to make it training ready.
 
         Args:
@@ -96,19 +96,20 @@ class GanTrainer(Model):
         sample_weight = self.sample_weights[0]
         if is_wgan:
             # Use WGAN loss function as described in the paper
-            self.g_loss = -K.mean(self.d_output_on_generated * sample_weight)
-            d_loss_col = self.d_output_on_generated - self.d_output_on_input
+            self.g_loss = -K.mean(self.d_output_on_fake * sample_weight)
+            # Loss for each sample, before averaging over mini-batch
+            d_loss_each = K.mean(self.d_output_on_fake - self.d_output_on_real, axis=-1)
             if wgan_gradient_lambda:
-                d_loss_col += (
+                d_loss_each += (
                     wgan_gradient_lambda
                     * loss_func.get_wgan_gradient_penalty(self.d_input, self.g_output, self.discriminator)
                 )
-            self.d_loss = K.mean(d_loss_col * sample_weight)
+            self.d_loss = K.mean(d_loss_each * sample_weight)
         else:
             # Standard Jensen-Shannon loss for GAN
-            self.g_loss = K.mean(loss_func.gan_generator_loss(self.d_output_on_generated) * sample_weight)
+            self.g_loss = K.mean(loss_func.gan_generator_loss(self.d_output_on_fake) * sample_weight)
             self.d_loss = K.mean(
-                loss_func.gan_discriminator_loss(self.d_output_on_input, self.d_output_on_generated)
+                loss_func.gan_discriminator_loss(self.d_output_on_real, self.d_output_on_fake)
                 * sample_weight
             )
         # Hack the loss and metrics, ignore the dummy loss set in compile
@@ -133,7 +134,7 @@ class GanTrainer(Model):
         return K.function(
             inputs,
             losses,
-            updates=self.updates + train_updates,
+            updates=train_updates,
             name=name,
             **self._function_kwargs
         )
@@ -144,17 +145,17 @@ class GanTrainer(Model):
         if not hasattr(self, 'gd_train_function'):
             # A fast train function variant that updates D and G together in one session run.
             self.gd_train_function = self._get_train_function(
-                train_updates=self.d_updates + self.g_updates,
+                train_updates=self.d_updates + self.g_updates + self.updates,
                 losses=[self.d_loss, self.g_loss],
                 name='train_function',
             )
             self.g_train_func = self._get_train_function(
-                train_updates=self.g_updates,
+                train_updates=self.g_updates + self.generator.updates,
                 losses=[self.g_loss],
                 name='g_train_function',
             )
             self.d_train_func = self._get_train_function(
-                train_updates=self.d_updates,
+                train_updates=self.d_updates + self.discriminator.updates,
                 losses=[self.d_loss, self.g_loss],
                 name='d_train_function',
             )

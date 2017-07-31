@@ -22,7 +22,7 @@ def gan_discriminator_loss(pred_real, pred_generated):
     Returns:
         A 1D tensor for the loss (shape=(batch_size,)).
     """
-    return K.mean(clip_log_prob(K.sigmoid(pred_real)) - clip_log_prob(1 - K.sigmoid(pred_generated)), axis=-1)
+    return -K.mean(clip_log_prob(K.sigmoid(pred_real)) + clip_log_prob(1 - K.sigmoid(pred_generated)), axis=-1)
 
 
 def gan_generator_loss(pred_generated):
@@ -36,7 +36,7 @@ def gan_generator_loss(pred_generated):
     Returns:
         A 1D tensor for the loss (shape=(batch_size,)).
     """
-    return K.mean(-clip_log_prob(K.sigmoid(pred_generated)), axis=-1)
+    return -K.mean(clip_log_prob(K.sigmoid(pred_generated)), axis=-1)
 
 
 def get_wgan_gradient_penalty(x_real, x_gen, discriminator):
@@ -64,3 +64,21 @@ def get_wgan_gradient_penalty(x_real, x_gen, discriminator):
     grad_reshape = K.reshape(grad, (batch_size, -1))
     grad_norm = K.sqrt(K.sum(K.square(grad_reshape), axis=1))
     return K.square(grad_norm - 1)
+
+
+def identity_loss(y_true, y_pred):
+    """A dummy keras loss function for training unsupervised model.
+
+    The loss is just the value of y_pred. To use it, compute your desired loss as the model output,
+    and compile your keras model with this identity_loss.
+
+    Args:
+        y_true (Tensor):
+            True prediction in supervised learning. Not used here,
+            but need to include it to be compatible with keras API.
+        y_pred (Tensor): The model prediction
+
+    Returns:
+        Returns y_pred as an 1D tensor.
+    """
+    return y_pred[:, 0]
