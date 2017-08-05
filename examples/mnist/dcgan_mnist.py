@@ -11,13 +11,10 @@ References:
 """
 import argparse
 
-import keras
 import matplotlib.pyplot as plt
 
-from gan_models.gan_trainer import GanTrainer
 from gan_models.common import get_mnist_images, plot_generated_images
-from .mnist_model import G_INPUT_SIZE, get_dcgan_model
-
+from .mnist_model import G_INPUT_SIZE, get_default_compiled_model
 
 
 def main():
@@ -34,42 +31,7 @@ def main():
     )
     args = parser.parse_args()
 
-    # Training parameters for different modes
-    if args.mode == 'gan':
-        batch_norm = True
-        is_wgan = False
-        n_discriminator_training = 1
-        clip_weight = None
-        wgan_gradient_lambda = 0
-        g_optimizer = keras.optimizers.RMSprop(lr=0.0002, rho=0.5)
-        d_optimizer = keras.optimizers.RMSprop(lr=0.0002, rho=0.5)
-    elif args.mode == 'wgan':
-        batch_norm = False
-        is_wgan = True
-        n_discriminator_training = 5
-        clip_weight = 0.01
-        wgan_gradient_lambda = 0
-        g_optimizer = keras.optimizers.RMSprop(lr=0.0001)
-        d_optimizer = keras.optimizers.RMSprop(lr=0.0001)
-    else:
-        batch_norm = False
-        is_wgan = True
-        n_discriminator_training = 5
-        clip_weight = None
-        wgan_gradient_lambda = 10
-        g_optimizer = keras.optimizers.Adam(lr=0.0001, beta_1=0, beta_2=0.9)
-        d_optimizer = keras.optimizers.Adam(lr=0.0001, beta_1=0, beta_2=0.9)
-
-
-    generator, discriminator = get_dcgan_model(batch_norm=batch_norm, clip_weight=clip_weight)
-    model = GanTrainer(generator=generator, discriminator=discriminator)
-    model.gan_compile(
-        g_optimizer=g_optimizer,
-        d_optimizer=d_optimizer,
-        is_wgan=is_wgan,
-        n_discriminator_training=n_discriminator_training,
-        wgan_gradient_lambda=wgan_gradient_lambda,
-    )
+    model = get_default_compiled_model(args.mode)
 
     (x_train, y_train), _ = get_mnist_images()
     model.gan_fit(x_train, epochs=args.epochs, batch_size=args.batch_size)

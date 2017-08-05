@@ -80,10 +80,10 @@ class GanTrainerKeras(object):
 
         # Generator trainer
         if is_wgan:
-            g_transform = lambda x: -x
+            def g_transform(x): return -x
         else:
             # The model expects output of 2D shape (batch_size, 1), so we expand the dimension here
-            g_transform = lambda x: loss_func.gan_generator_loss(x)[:, None]
+            def g_transform(x): return loss_func.gan_generator_loss(x)[:, None]
         g_loss_each = layers.Lambda(g_transform)(self.d_output_for_g_train)
         self.g_trainer_model = Model(inputs=self.g_input, outputs=g_loss_each)
         self.g_trainer_model.compile(g_optimizer, loss=loss_func.identity_loss)
@@ -166,4 +166,3 @@ def _wgan_gradient_penalty(x_real, x_gen, discriminator):
     x_interpolate = layers.Lambda(interpolate)([x_real, x_gen])
     d_output = discriminator(x_interpolate)
     return layers.Lambda(grad_penalty, output_shape=(1,))([d_output, x_interpolate])
-

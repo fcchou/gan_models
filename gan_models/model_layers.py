@@ -15,7 +15,7 @@ ConvParams = namedtuple('ConvParams', ('filters', 'kernel_sizes', 'strides'))
 
 class UniformNoiseGenerator(layers.Layer):
 
-    def __init__(self, output_dim, minval=-1.0, maxval=1.0, **kwargs):
+    def __init__(self, output_dim, val_range=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
         The output is random uniform numbers of shape (batch_size, output_dim).
@@ -23,17 +23,15 @@ class UniformNoiseGenerator(layers.Layer):
 
         Args:
             output_dim (int): Dimension of the output.
-            minval (float): Min value of the uniform noise.
-            maxval (float): Max value of the uniform noise.
+            val_range (float): Range of the uniform noise to be generated ([-val_range, val_range]).
         """
-        self.minval = minval
-        self.maxval = maxval
+        self.val_range = val_range
         self.output_dim = output_dim
         super().__init__(**kwargs)
 
     def call(self, inputs, **kwargs):
         batch_size = K.shape(inputs)[0]
-        return K.random_uniform((batch_size, self.output_dim), minval=self.minval, maxval=self.maxval)
+        return K.random_uniform((batch_size, self.output_dim), minval=-self.val_range, maxval=self.val_range)
 
     def compute_output_shape(self, input_shape):
         return input_shape[0], self.output_dim
