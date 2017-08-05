@@ -9,4 +9,21 @@ This repo implements the algorithm in the following 3 papers:
  
 See the [examples folder](./examples) for how to apply the model on MNIST and Yelp photos.
 
+## MNIST Results
+Original DCGAN
 
+![alt text](./examples/mnist/results/dcgan_mnist.png)
+
+MLP + Improved WGAN
+
+![alt text](./examples/mnist/results/mlp_gan.png)
+
+## Yelp Photo Results
+
+Real photos
+ 
+![alt text](./examples/yelp_photos/results/yelp_photo_true.png)
+
+Generated fake photos (with DCGAN architecture + Improved WGAN training)
+
+![alt text](./examples/yelp_photos/results//yelp_photo_gan.png)
