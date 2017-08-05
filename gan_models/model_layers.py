@@ -18,8 +18,8 @@ class UniformNoiseGenerator(layers.Layer):
     def __init__(self, output_dim, val_range=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
-        The output is random uniform numbers of shape (batch_size, output_dim).
-        The input vectors are discarded
+        The output is random numbers of shape (batch_size, output_dim).
+        The values of input vector are discarded.
 
         Args:
             output_dim (int): Dimension of the output.
@@ -42,9 +42,9 @@ class NormalNoiseGenerator(layers.Layer):
     def __init__(self, output_dim, stdev=1.0, **kwargs):
         """Generate uniform noise for the data generator.
 
-        The output is random uniform numbers of shape (batch_size, output_dim).
-        The input vectors are discarded
-
+        The output is random numbers of shape (batch_size, output_dim).
+        The values of input vector are discarded.
+        
         Args:
             output_dim (int): Dimension of the output.
             stdev (float): Standard deviation of the Gaussian noise.
