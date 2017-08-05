@@ -4,7 +4,7 @@ Model class to help training GAN.
 The main class GanTrainer hacks some keras Model class internals to perform faster training and to reuse the
 mini-batching and progress bar of model.fit function.
 
-See Also gan_trainer_simple.py for a training pipeline that has less hacks of keras internals.
+See Also gan_trainer_keras.py for a training pipeline that has less hacks of keras internals.
 """
 import contextlib
 
